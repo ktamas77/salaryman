@@ -35,9 +35,13 @@
       <option value="mfj">Married filing jointly</option>
     </select>
   </div>
+  <div class="row">
+    <input id="housing" placeholder="Monthly rent / mortgage, e.g. $3,000" inputmode="numeric" aria-label="Monthly housing cost">
+  </div>
 
   <div class="card"><table id="breakdown"></table></div>
   <div class="card"><table id="pay"></table></div>
+  <div class="card" id="housingCard" hidden><table id="afterHousing"></table></div>
   <small id="rates">Loading exchange rates…</small>
   <p><small>Estimate only. Standard deduction, no pre-tax 401k/HSA/benefits, no credits. Federal 2026 brackets (OBBBA-indexed); CA brackets use 2025 indexed values; CA SDI 1.3% uncapped. Semi-monthly = annual ÷ 24.</small></p>
 </main>
@@ -98,10 +102,15 @@ function render() {
      <tr><td>Gross salary</td><td>${usd(gross)}</td><td></td></tr>` +
     lines.map(([k, v]) => `<tr class="neg"><td>${k}</td><td>−${usd(v)}</td><td>${pct(v)}</td></tr>`).join('') +
     `<tr class="total"><td>Take-home</td><td>${usd(net)}</td><td>${pct(net)}</td></tr>`;
-  const rows = [['Per year', net], ['Per month', net / 12], ['Each paycheck (1st & 15th)', net / 24]];
-  document.getElementById('pay').innerHTML =
-    `<tr><th>Take-home</th><th>USD</th><th>HUF</th><th>BTC</th></tr>` +
-    rows.map(([k, v]) => `<tr><td>${k}</td><td>${usd(v)}</td><td>${huf(v)}</td><td>${btc(v)}</td></tr>`).join('');
+  const housing = +document.getElementById('housing').value.replace(/[^\d]/g, '') || 0;
+  const table = (title, yearly, cls = '') =>
+    `<tr><th>${title}</th><th>USD</th><th>HUF</th><th>BTC</th></tr>` +
+    [['Per year', yearly], ['Per month', yearly / 12], ['Each paycheck (1st & 15th)', yearly / 24]]
+      .map(([k, v]) => `<tr class="${cls}"><td>${k}</td><td>${usd(v)}</td><td>${huf(v)}</td><td>${btc(v)}</td></tr>`).join('');
+  document.getElementById('pay').innerHTML = table('Take-home', net);
+  document.getElementById('housingCard').hidden = !housing;
+  document.getElementById('afterHousing').innerHTML =
+    table('Housing', 12 * housing, 'neg') + table('Left after housing', net - 12 * housing);
 }
 
 fetch('https://api.coingecko.com/api/v3/simple/price?ids=bitcoin&vs_currencies=usd,huf')
@@ -115,6 +124,7 @@ fetch('https://api.coingecko.com/api/v3/simple/price?ids=bitcoin&vs_currencies=u
   .catch(() => document.getElementById('rates').textContent = 'Could not load exchange rates (CoinGecko unreachable).');
 
 document.getElementById('salary').addEventListener('input', render);
+document.getElementById('housing').addEventListener('input', render);
 document.getElementById('status').addEventListener('change', render);
 render();
 </script>
